@@ -12,9 +12,10 @@
   set page(
     "us-letter",
     margin: 1in,
-    footer: [
-      // #align(center, counter(page).display("1"))
-    ],
+    numbering: "1 of 1",
+    // footer: [
+    //   // #align(center, counter(page).display("1"))
+    // ],
   )
   set par(
     // leading: 1em,
@@ -41,11 +42,6 @@
 
   // outline(title: [Table of Contents], indent: true, depth: 3)
   // outline(title: [Table of Figures], indent: true, depth: 3, target: figure)
-
-  // page(
-  //   numbering: "1", // TODO: Remove
-  //   content,
-  // )
 
   // Must be after the title page
   show heading.where(level: 1, numbering: "1.1"): it => {
@@ -79,6 +75,7 @@
 #let notation = thmbox("thm", "Notation", inset: (left: 0em, right: 0em))
 #let axiom = thmbox("thm", "Axiom", inset: (left: 0em, right: 0em))
 #let remark = thmbox("thm", "Remark", inset: (left: 0em, right: 0em))
+#let corollary = thmbox("thm", "Corollary", inset: (left: 0em, right: 0em))
 #let prf = thmproof("thm", "Proof")
 // #let theorem = thmbox("theorem", "Theorem", fill: rgb("#eeffee"))
 // #let corollary = thmplain(

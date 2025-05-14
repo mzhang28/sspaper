@@ -10,7 +10,7 @@
   doc,
 )
 
-This is a report on progress towards a formalized construction of spectral sequences within a flavor of cubical type theory.
+This is a report on progress towards a formalized construction of spectral sequences within cubical Agda.
 
 = Type theory
 
@@ -37,13 +37,57 @@ Cubical type theory @cohen_cubical_2016 is an extension of MLTT, a dependent typ
 The intuition is to have a type $I$ with a DeMorgan structure (operations $and$, $or$, $not$) that can be composed to represent faces of $n$-dimensional cubes.
 The vertices of these cubes would be various terms to be identified.
 
+An important operation on cubical path types is _homogeneous composition_.
+
+#figure(diagram(spacing: 15mm, node-inset: 4pt,
+  node((0, 0), $x$, name: "x1"),
+  node((0, -1), $x$, name: "x2"),
+  node((1, 0), $y$, name: "y"),
+  node((1, -1), $z$, name: "z"),
+  edge(<x2>, <z>, "..>"),
+  edge(<x1>, <x2>, "->", $refl$, label-side: left),
+  edge(<x1>, <y>, "->", $p$, label-side: right),
+  edge(<y>, <z>, "->", $q$, label-side: right),
+))
 
 == Mechanization
 
 The construction presented here is based on work by @FvDFormalizationHigherInductive2018.
 Our results are mechanized using Cubical Agda @vezzosi_cubical_2021.
+Much of the formalization also uses an existing library of work by others, collectively available at https://github.com/agda/cubical/.
 
 = Algebra
+
+== Abelian groups and modules
+
+#definition[Abelian group][
+  An abelian group $G$ consists of a set $G$, equipped with an identity element $0$, inverse function $-$, and a commutative binary operation, $(+)$ satisfying:
+  
+  - associativity $propEq(a + (b + c), (a + b) + c)$
+  - left- and right- identity $propEq(0 + a, a)$ and $propEq(a + 0, a)$
+  - inverse $propEq(a + (- a), 0)$ and $propEq((- a) + a, 0)$
+  - commutativity $propEq(a + b, b + a)$
+]
+
+As is customary in algebra, we will represent the group and the underlying _carrier_ set with the same notation.
+The $0$ element of a group $G$ may be denoted $0_G$ when it benefits to know which group is being discussed.
+
+The binary operation is abstracted but since it behaves so much like addition in most contexts, we will use the plus $+$ operator to represent it.
+Likewise, we may use $op(+)_G$ to explicitly declare the group being used.
+
+#definition[Group homomorphism][
+  A group homomorphism $f$ between abelian groups $A$ and $B$ is a function between the carrier sets $A$ and $B$, with the property that it preserves the group operation:
+
+  $ propEq(f(a+b), f(a)+f(b)) $
+]
+
+#corollary[For a homomorphism $f$ between $A$ and $B$, $propEq(f(0_A), 0_B)$.]
+
+#corollary[For a homomorphism $f$ between $A$ and $B$, $propEq(f(-a), -f(a)).$]
+
+#definition[Module][
+  For some ring $R$, a _left_ $R$-module $M$ consists of an abelian group as well as a scalar multiplication 
+]
 
 == Direct sum and grading
 
@@ -70,20 +114,23 @@ Each polynomial, like $x^2 + 2x + 1$ can be decomposed into a single term with a
 ))
 
 Just like in polynomials, the individual graded pieces are designated by their *degree*, which is an element of some group $G$.
+Given the two-dimensional nature of spectral sequences, we will frequently work with a *bidegree*, which is simply a product of two separate degrees.
 
 Formally, graded modules are equipped with a structure:
 
 $ R_m dot M_n subset.eq M_(m+n) $
 
 A principled way to represent such a structure in HoTT is by using a higher inductive type, such as in @lamiaux_computing_2023.
+This approach creates a constructor for zero, each homogeneous element, an inductively defined constructor which represents addition, and paths representing the basic properties such as associativity and identity.
 
 However, for purposes of constructing a spectral sequence, we merely need the grading to uniformly manipulate pieces of this map.
+So using the higher inductive type approach leads to proving a lot of properties of direct sums that will not be useful for the goals in this paper, although they may be useful in general.
 We will alternately define graded modules by _entirely ignoring_ the total module aspect as well as the structure requirement.
 
 #definition[Graded module][
   For a ring $R$ and an abelian group $G$, a *$G$-graded $R$-module* is defined as a function:
 
-  $ defEq(GradedModule_R, arro(carrier(G), LeftModule_R)) $
+  $ defEq(GradedModule_R, arro(G, LeftModule_R)) $
 ]
 
 == Degrees and homomorphisms
@@ -103,7 +150,7 @@ The degree of $f$ is denoted $deg(f)$.
 
 One problem that crops up when defining homomorphisms the "obvious" way is that when computing a composition of two homomorphisms $defEq(h, g compose f)$, we would like to get a homomorphism of degree $deg(f) + deg(g)$.
 This means functions in $h$ must be of type $arro(A_n, A_(n + (deg(f) + deg(g))))$.
-However, in order to compose $g$ with $f$, we must use $isTyp(g_(n + deg(f)), arro(A_(n + deg(f)), A_((n + deg(f)) + deg(g))))$.
+However, in order to compose $g$ with $f$, we must use the degree-$(n+deg(f))$ piece of $g$, giving us $isTyp((g_(n + deg(f)) compose f_n), arro(A_n, A_((n + deg(f)) + deg(g))))$.
 As you can see, the codomain has two slightly different degrees.
 In HoTT, we can resolve this by transporting along the path given by the associativity of addition of groups.
 However, this transport will be present everywhere compositions are used.
@@ -118,31 +165,99 @@ We follow the trick given by @FvDFormalizationHigherInductive2018 to avoid trans
   - $isTyp(f, (i, j : G) -> (p : propEq(d(i), j)) -> LeftModuleHom(A_i, B_j))$.
 ]
 
-  
-= Spectral sequences
-
-Spectral sequences, due to @leray_anneau_1946, are a tool in algebraic topology for computing (co)homology groups.
-This is useful is due to (co)homology groups being potentially difficult to compute directly, so it is commonly easier to _approximate_ it by taking filtrations of the space, and making observations about pieces of the (co)homology groups.
-
-The Serre spectral sequence is one of the earliest spectral sequences.
-Given a Serre fibration $F -> X ->^pi B$, a Serre spectral sequence relates the (co)homology groups of the total space $X$ with the (co)homology groups of the fiber $F$ and the base space $B$.
-Classically, this is constructed using singular (co)homology.
-However, the construction of singular (co)homology in HoTT is challenging, due to simplicial sets not being primitively supported.
-
-In this work, we will work with a _generalized_ cohomology. This is due to @eilenberg_axiomatic_1945, which introduced axioms that cohomology theories must satisfy.
-It was shown in @brown_cohomology_1962 @adams_variant_1971 that a generalized cohomology theory $cal(E)$ is "representable" by a spectrum $Y_n$. Classically, we would write this as:
-
-$ cal(E)^n (X) tilde.eq [X, Y_n] $
-
-In homotopy type theory, we can use truncations to represent homotopy classes, so we are left with the following definition for *cohomology*:
-
-$ cal(E)^n (X) :equiv norm(X -> Y_n)_0 $
-
 = Homotopy Theory
 
-== Exact sequences
+== Homotopy groups
 
+#definition[Homotopy group][The $n$th homotopy group of a pointed space $A$ is defined as
 
+$ defEq(pi_n (A), norm(Omega^n (A))_0) $]
+
+#property[For all $n > 1$, $pi_n (X)$ is an abelian group.] <homotopyGroup>
+
+== Exactness and exact sequences
+
+#definition[Exactness][Given pointed types $A, B, C$ and pointed functions $isTyp(f, arro(A, B))$ and $isTyp(g, arro(B, C))$, we say $f$ and $g$ are *exact* if $propEq(imOf(f), kerOf(g))$.]
+
+#figure(canvas({
+  import cetz.draw: *
+  let midsize = 0.5
+  circle((3, 0), radius: (1, 2))
+  content((rel: (0, 2.5)))[$C$]
+
+  merge-path(fill: rgb("#ffeeeecc"), stroke: none, {
+    circle((-3, 0), radius: (1, 2))
+    circle((-3, -2), radius: 0)
+    circle((0, -midsize * 2), radius: 0)
+    circle((0, 0), radius: (midsize, midsize * 2))
+  })
+  line((-3, 2), (0, midsize * 2), stroke: rgb("#999999"))
+  line((-3, -2), (0, -midsize * 2), stroke: rgb("#999999"))
+  content((-1.5, 0))[$f$]
+
+  circle((-3, 0), radius: (1, 2))
+  content((rel: (0, 2.5)))[$A$]
+
+  circle((3, 0), radius: 0.08, fill: black)
+  content((rel: (0.5, 0)))[$0_C$]
+
+  circle((0, 0), radius: (1, 2))
+  content((rel: (0, 2.5)))[$B$]
+
+  line((0, midsize * 2), (3, 0), stroke: rgb("#999999"))
+  line((0, -midsize * 2), (3, 0), stroke: rgb("#999999"))
+  merge-path(close: true, stroke: none, fill: rgb("#eeffee99"), {
+    line((0, midsize * 2), (3, 0))
+    line((3, 0), (0, -midsize * 2))
+  })
+  content((1.5, 0))[$g$]
+
+  circle((0, 0), radius: (midsize, midsize * 2), stroke: rgb("#999"), fill: rgb("#ffeeff"))
+  content(
+    (rel: (0, 1.3)),
+    frame: "rect",
+    stroke: none,
+    fill: rgb("#ffffffee"),
+    padding: .1,
+    text(fill: rgb("#999"), size: .8em, $sans("Im")(f) = sans("Ker")(g)$)
+  )
+}), caption: $sans("Im")(f) = sans("Ker")(g)$)
+
+As a direct consequence, the composition $g compose f$ always results in the trivial map that maps everything to $0$.
+This definition of exactness also specializes to groups and modules, since those are simply pointed types with more structure.
+
+A series of functions where every pair of consecutive functions are exact is called an _exact sequence_.
+Exact sequences give us a way to concisely represent certain properties of functions.
+As an example, consider this exact sequence:
+
+#figure(diagram(spacing: 8mm,
+  node($0$), edge("->"),
+  node((rel: (1, 0)), $A$), edge("->", $f$),
+  node((rel: (1, 0)), $B$), edge("->"),
+  node((rel: (1, 0)), $0$)
+))
+
+The exactness at $A$ tells us that the kernel of $f$ is _only_ $0_A$.
+This corresponds to the fact that $f$ is *injective*.
+The exactness at $B$ tells us that the image of $f$ is all of $B$.
+This corresponds to the fact that $f$ is *surjective*.
+These two facts combined tell us that $f$ is an *isomorphism*.
+
+An exact sequence is considered _long_ if it spans infinitely in one or both directions.
+For example, the long exact sequence of homotopy groups relates the $n$th homotopy groups derived from a pointed function $f$:
+
+#figure(diagram(spacing: 12mm, label-sep: 1mm,
+  node($pi_1 (B)$), edge("<-"),
+  node((rel: (-1, 0)), $pi_1 (A)$), edge("<-"),
+  node((rel: (-1, 0)), $pi_1 (F)$), edge("<-", $delta$),
+  node((rel: (2, -1)), $pi_2 (B)$), edge("<-"),
+  node((rel: (-1, 0)), $pi_2 (A)$), edge("<-"),
+  node((rel: (-1, 0)), $pi_2 (F)$), edge("<-", $delta$),
+  node((rel: (2, -1)), $pi_3 (B)$), edge("<-"),
+  node((rel: (-1, 0)), $pi_3 (A)$), edge("<-"),
+  node((rel: (-1, 0)), $pi_3 (F)$), edge("<.."),
+  node((rel: (2, -1)), $dots$),
+))
 
 == Spectra
 
@@ -179,13 +294,13 @@ The indexing type is written here as $ZZ$, but in reality it can be any infinite
 
 #definition[Homotopy group of a spectrum][]
 
-== Eilenberg-MacLane spaces and their spectra
+== Eilenberg-MacLane spectra
 
 There is a construction known as the Eilenberg-MacLane space, which forms an $Omega$-spectrum.
 Using the representability theorem due to @brown_cohomology_1962, this spectrum exactly represents ordinary cohomology.
 Additionally, prior work by @LFEilenbergMacLaneSpacesHomotopy2014 brought Eilenberg-MacLane spaces to HoTT.
-Thus, these spaces are incredibly convenient to work with when 
-constructing spectral sequences.
+Thus, these spaces are incredibly convenient to work with when constructing spectral sequences within type theory.
+In this section we will summarize the definition and the properties of Eilenberg-MacLane spaces without proof.
 
 #definition[$K(G, 1)$][For some group $G$, let $K(G, 1)$ be a type defined by the higher inductive type found in $section$3.1 of @LFEilenbergMacLaneSpacesHomotopy2014.]
 
@@ -193,3 +308,172 @@ constructing spectral sequences.
 
 #property[For all $n, m in NN$ such that $m != n$, $pi_n (K(G, m))$ is isomorphic to the trivial group.]
 
+#definition[Eilenberg-MacLane spectrum][For any abelian group $G$, the Eilenberg-MacLane spaces $K(G, n)$ form a spectrum $H A$, such that for all $isTyp(n, ZZ)$:
+
+$ defEq((H A)_n, cases(K(G, n) &"if" n >= 0, 1 &"if" n < 0)) $
+
+where $1$ denotes the trivial pointed space consisting of a single element.
+The structure maps are defined as
+] <EMSpectrum>
+
+
+== Cohomology
+
+Cohomology, like #link(<homotopyGroup>)[homotopy groups] and homology, are a way to "measure" the holes in a topological space.
+However, homotopy groups are notoriously difficult to compute.
+For example, as of writing, we only know the homotopy groups of spheres up to dimension 90.
+Tools like homology and cohomology give us an approximation of this information.
+
+The properties of various cohomologies have been distilled into axioms, known as the Eilenberg-Steenrod axioms, due to @eilenberg_axiomatic_1945.
+Furthermore, it was shown in @brown_cohomology_1962 @adams_variant_1971 that any generalized cohomology theory that satisfies these axioms is "representable" by a spectrum.
+
+= Spectral sequences
+
+// Spectral sequences, due to @leray_anneau_1946, are a tool in algebraic topology for computing (co)homology groups.
+// This is useful is due to (co)homology groups being potentially difficult to compute directly, so it is commonly easier to _approximate_ it by taking filtrations of the space, and making observations about pieces of the (co)homology groups.
+
+// The Serre spectral sequence is one of the earliest spectral sequences.
+// Given a Serre fibration $F -> X ->^pi B$, a Serre spectral sequence relates the (co)homology groups of the total space $X$ with the (co)homology groups of the fiber $F$ and the base space $B$.
+// Classically, this is constructed using singular (co)homology.
+// However, the construction of singular (co)homology in HoTT is challenging, due to simplicial sets not being primitively supported.
+
+// In this work, we will work with a _generalized_ cohomology. This is due to @eilenberg_axiomatic_1945, which introduced axioms that cohomology theories must satisfy.
+// It was shown in @brown_cohomology_1962 @adams_variant_1971 that a generalized cohomology theory $cal(E)$ is "representable" by a spectrum $Y_n$. Classically, we would write this as:
+
+// $ cal(E)^n (X) tilde.eq [X, Y_n] $
+
+// In homotopy type theory, we can use truncations to represent homotopy classes, so we are left with the following definition for *cohomology*:
+
+// $ cal(E)^n (X) :equiv norm(X -> Y_n)_0 $
+
+Let us begin with a high level discussion of spectral sequences.
+At its core, a spectral sequence is a bookkeeping tool for long exact sequences of (co)homology groups.
+
+...
+
+#definition[Cohomological spectral sequence][
+  A cohomological spectral sequence is a pair $(E, d)$.
+  
+  $E$ is a sequence of pages, indexed by $isTyp(r, NN)$, starting at 2.
+  Each page contains an infinite 2-dimensional grid of abelian groups, indexed by $isTyp((p, q), ZZ^2)$, denoted $E^(p, q)_r$.
+
+  $d$ are maps between the abelian groups in $E$.
+  For page $r$, $d_r$ maps from $E^(p,q)_r$ to $E^(p+r,q-r+1)_r$. These maps are differentials, meaning consecutive $d_r$s compose to $0$.
+] <spectralSequence>
+
+#let stop_before(start, end, shorten, ..args) = {
+  import draw: *
+  // Extract x and y coordinates
+  let (x1, y1) = start
+  let (x2, y2) = end
+  let m = (y2 - y1) / (x2 - x1)
+  let ang = calc.atan2(x2 - x1, y2 - y1)
+  let sx = shorten * calc.cos(ang)
+  let sy = shorten * calc.sin(ang)
+  line((x1 + sx, y1 + sy), (x2 - sx, y2 - sy), ..args)
+}
+
+#figure({
+  table(
+    columns: (auto, auto),
+    stroke: none,
+    canvas({
+      import draw: *
+      set-style(stroke: 0.4pt)
+      grid((0, 0), (6.5, 4.5), step: 1, stroke: gray + 0.2pt)
+      line((-0.5, 0), (6.5, 0), mark: (end: "stealth"))
+      line((0, -0.5), (0, 4.5), mark: (end: "stealth"))
+      for x in (1, 2, 3, 4, 5, 6) {
+        for y in (1, 2, 3, 4) {
+          circle((x, y), fill: black, radius: 0.08)
+          if x < 6 {
+            stop_before((x, y), (x+1, y), 0.15,
+              mark: (end: "straight"),
+              stroke: (paint: rgb("#ff9999"), thickness: 0.6pt)
+            )
+          }
+        }
+      }
+    }),
+    canvas({
+      import draw: *
+      set-style(stroke: 0.4pt)
+      grid((0, 0), (6.5, 4.5), step: 1, stroke: gray + 0.2pt)
+      line((-0.5, 0), (6.5, 0), mark: (end: "stealth"))
+      line((0, -0.5), (0, 4.5), mark: (end: "stealth"))
+      for x in (1, 2, 3, 4, 5, 6) {
+        for y in (1, 2, 3, 4) {
+          circle((x, y), fill: black, radius: 0.08)
+          if x < 5 {
+            stop_before((x, y), (x+2, y - 1), 0.15,
+              mark: (end: "straight"),
+              stroke: (paint: rgb("#ff9999"), thickness: 0.6pt)
+            )
+          }
+        }
+      }
+    })
+  )
+}, kind: "image", supplement: [Figure], caption: [Pages $E_(1, 2)$ of a cohomological spectral sequence]) <spectralSequenceFigure>
+
+Although these pages are infinite, we typically operate solely in the first quadrant, such that all other groups are definitionally trivial.
+
+== Exact couples
+
+Exact couples, due to @massey_exact_1952, are a convenient way to "wrap" up the data of a spectral sequence such that its grading can be treated uniformly.
+They arise naturally from the classical construction of the Serre spectral sequence, as described in @hatcher_spectral_2004.
+
+We want to represent spectral sequence data this way because it provides extra information that we can use to determine the $d$s of future pages, that the spectral sequence structure doesn't carry by itself.
+In this section, we will describe how to iterate an exact couple, and how to use an exact couple to construct a spectral sequence.
+
+Notice that due to the graded nature of the modules, when iterating the exact couples, the degrees of our homomorphisms will slowly shift.
+This is what gives us the shifts in @spectralSequenceFigure.
+
+#definition[Exact couple][
+  An exact couple $(D, E, i, j, k)$ consists of two graded modules $D, E$ as well as morphisms
+  #figure(table(
+    stroke: none, columns: (auto, auto, auto),
+    column-gutter: 2em,
+    [$isTyp(i, arro(D, D))$],
+    [$isTyp(j, arro(D, E))$],
+    [$isTyp(k, arro(E, D))$],
+  ))
+  such that they are exact as in the following non-commuting diagram:
+
+  #figure(diagram(cell-size: 5mm, 
+    node((0, 0), $D$, name: <D1>),
+    edge(label-side: left, "->", $i$),
+    node((2, 0), $D$, name: <D2>),
+    edge(label-side: left, "->", $j$),
+    node((1, 1), $E$, name: <E>),
+    edge(label-side: left, <E>, <D1>, $k$, "->"),
+  ), caption: "Exact couple")
+]
+
+#theorem[Derived couple][
+  Given an exact couple $(D, E, i, j, k)$, we can get a _derived_ exact couple $(D', E', i', j', k')$ that contains exactly the homological data required for future pages of the spectral sequence.
+]
+#prf[
+  This process is almost entirely an exercise in diagram chasing.
+  In HoTT, we will also have the added burden of wrapping and unwrapping all of our data properly through truncations and quotients.
+
+  First, we have $defEq(D', imOf(i))$.
+
+  First, define $defEq(d, j compose k)$. Notice that this goes around the triangle in a strange way, not following the arrows.
+]
+
+== Convergence
+
+== Atiyah-Hirzebruch Spectral Sequence
+
+
+== Serre Spectral Sequence
+
+= Discussion
+
+- Category theory?
+- Thoughts on Agda
+  - as a proof assistant
+  - for learning math
+  
+#TODO[in the type theory section, talk about the pattern of Carrier, Structure where the structure is typically a prop]
