@@ -18,7 +18,7 @@
     // ],
   )
   set par(
-    // leading: 1em,
+    // leading: 1.5em,
     // spacing: 2.4em,
     // first-line-indent: 1.8em,
     justify: true,
@@ -40,8 +40,8 @@
     #heading(outlined: false, numbering: none, text(size: 2em)[#title])
   ]
 
-  // outline(title: [Table of Contents], indent: true, depth: 3)
-  // outline(title: [Table of Figures], indent: true, depth: 3, target: figure)
+  outline(title: [Table of Contents], indent: auto, depth: 3)
+  // outline(title: [Table of Figures], indent: auto, depth: 3, target: figure)
 
   // Must be after the title page
   show heading.where(level: 1, numbering: "1.1"): it => {

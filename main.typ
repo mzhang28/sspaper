@@ -1,5 +1,5 @@
 #import "./style.typ": *
-#import "@preview/fletcher:0.5.7" as fletcher: diagram, node, edge
+#import "@preview/fletcher:0.5.7" as fletcher: diagram, node, edge, shapes
 #let gr = "gr"
 #let Path = $sans("Path")$
 #let PathP = $sans("PathP")$
@@ -32,7 +32,6 @@ This equivalence is introduced to MLTT as an _axiom_, and it allows us to recove
 
 Additionally, HoTT introduces _higher inductive types_, which generalize ordinary inductive types but allow for construction of identity types (path constructors) as well as ordinary terms (also called point constructors).
 
-
 Cubical type theory @cohen_cubical_2016 is an extension of MLTT, a dependent type theory, that adds an interval-based path type for representing propositional equality, as opposed to the inductive identity type originally proposed by Martin-Löf.
 The intuition is to have a type $I$ with a DeMorgan structure (operations $and$, $or$, $not$) that can be composed to represent faces of $n$-dimensional cubes.
 The vertices of these cubes would be various terms to be identified.
@@ -52,16 +51,129 @@ An important operation on cubical path types is _homogeneous composition_.
 
 == Mechanization
 
+Agda @agda_developers_agda_2025 is a dependently typed programming language and proof assistant developed at the Chalmers University of Technology.
+
 The construction presented here is based on work by @FvDFormalizationHigherInductive2018.
 Our results are mechanized using Cubical Agda @vezzosi_cubical_2021.
 Much of the formalization also uses an existing library of work by others, collectively available at https://github.com/agda/cubical/.
 
+The work accompanying this paper can be found at https://git.mzhang.io/michael/msthesis.
+Here is a link to some of the main theorems that have been proven:
+
+#table(stroke: none, columns: (auto, 1fr),
+  table.header([*Theorem*], [*Link*]),
+  [@derivedCouple], [#link("https://git.mzhang.io/michael/msthesis/src/branch/main/src/ExactCouple/Derived.agda")[`ExactCouple.Derived.derivedCouple`]],
+)
+
+In addition, much of the theory of graded modules had to be developed for cubical Agda.
+
+== Higher inductive types
+
+== Homotopy levels
+
+Homotopy levels, also known as $n$-types, describe the amount of "interesting" homotopical information exists in a type.
+For this topic, I find it best to begin with an example.
+
+#example[
+  Suppose a type $A$ has two distinct elements $x, y$. Then, suppose there exist two distinct paths between those types $p, q$. Then, suppose there are distinct paths between those paths $r, s$. Finally, all paths in $propEq(r, s)$ are equal; $propEq(r, s)$ is contractible, and as a consequence, all higher paths are also contractible.
+  Then, $A$ is said to have a homotopy level of 3.
+]
+
+Here is a table of some common homotopy levels:
+
+#table(stroke: none, columns: (auto, auto, 1fr),
+  table.header([*Level*], [*Name*], [*Description*]),
+  [0], [_contractible type_ <hLevelContr>], [This type is equivalent to the unit type.],
+  [1], [_mere proposition_ <hLevelMereProp>], [Cannot distinguish elements apart.],
+  [2], [_set_ <hLevelSet>], [Cannot distinguish paths between elements apart.],
+  [3], [_groupoid_], [Cannot distinguish 2-paths apart.],
+)
+
+#property[If a type $A$ has homotopy level $n$, then paths in $A$ will have homotopy level $n-1$.]
+
+Truncations can be used to artificially reduce the homotopy level of a type.
+A truncation can be thought of as a higher inductive type that adds path constructors for all paths above a particular dimension.
+
+Why would we want to reduce the homotopy level of a type?
+One big reason would be to avoid having to solve coherence between higher paths.
+For example, consider the type representing "the image of $isTyp(f,arro(A,B))$":
+
+$ isTyp(sans("Image"), sum_(y:B) (norm(sum_(x:A) (propEq(f(x),b)))_1)) $
+
+If we wanted to compare elements of this type, identity is functorial over products, so we would need to compare $y_1$ and $y_2$, which we may have techniques for.
+However, comparing the equality term $propEq(f(x),b)$ may be extremely difficult, or even impossible if we allow an infinite hierarchy of path types.
+In this case (and many such cases in mathematics), we only care _that_ an element $y$ is in the image, not which particular $x$ it was mapped from.
+Truncating paths to a certain homotopy level, for example, mere propositions, allows us to make this comparison.
+
+One useful property of truncations is that we don't fully lose the information that was truncated.
+For example, we can map out of a mere proposition to produce another mere proposition.
+In a sense, as long as we are not "leaking" more information, we can perform computations on the underlying data.
+
+In fact, we can take this one step further, with the following theorem due to @kraus_general_2015:
+
+#theorem[
+  Given a function $isTyp(f, arro(A, B))$ such that:
+
+  - $B$ is a set (homotopy level 2)
+  - $f$ is _weakly constant_ (in other words, for all $isTyp(x\, y, A)$, $propEq(f(x), f(y))$)
+
+  There exists a function $isTyp(f', arro(norm(A)_1, B))$ such that $f' = |\_|_1 compose f$
+] <propSetElim>
+
+== Cubical paths
+
 = Algebra
+
+== Algebra in Agda
+
+Doing algebra in a formal proof assistant is a bit more verbose and often more ugly than doing algebra on pen and paper.
+Some of this pain can be alleviated using tactic-based proof assistants, where an interactive interface displays the current goal and certain tactics are used to simplify the goal.
+However, this often leads to cryptic-looking proofs, and is often intractable to read without having access to the theorem prover.
+Using Agda's mix-fix notation, the cubical library in @the_agda_community_cubical_2024 creates a powerful "equational reasoning" syntax that combines the interactivity with a more readable notation akin to two-column proofs.
+
+For example, consider this lemma:
+
+#text(size: 10pt)[```
+lemma : invEq d 0g ≡ - d .fst 0g
+lemma =
+  invEq d 0g                                ≡⟨ sym (+IdL _) ⟩ 
+  0g + invEq d 0g                           ≡⟨ cong (_+ invEq d 0g) (sym (+InvL (d .fst 0g))) ⟩ 
+  (- d .fst 0g + d .fst 0g) + invEq d 0g    ≡⟨ sym (+Assoc _ _ _) ⟩
+  - d .fst 0g + (d .fst 0g + invEq d 0g)    ≡⟨ cong ((- d .fst 0g) +_) (+Comm _ _) ⟩
+  - d .fst 0g + (invEq d 0g + d .fst 0g)    ≡⟨ cong ((- d .fst 0g) +_) (sym (pd (invEq d 0g))) ⟩
+  - d .fst 0g + d .fst (invEq d 0g)         ≡⟨ cong ((- d .fst 0g) +_) (secEq d 0g) ⟩
+  - d .fst 0g + 0g                          ≡⟨ +IdR (- d .fst 0g) ⟩
+  - d .fst 0g                               ∎
+```]
+
+The left side is a restatement of the _type_ of the expression, while the right side is the proof term that shows why the term to its left is equal to the term on the next line.
+Under the hood, the `_≡⟨_⟩` is stitching together all the proof terms on the right side using path concatenation.
+
+The way we define algebraic structures in type theory is through records, which contain not only the underlying types of the structures but also all the operations and their properties.
+This is akin to requiring all the properties to be proven in order to even show that the structure is well-defined.
+
+For example, consider the monoid. It could be defined this way:
+
+#text(size: 10pt)[```
+record Monoid : Type (ℓ-suc ℓ) where
+  field
+    A : Type ℓ                                        -- underlying type
+    _·_ : A → A → A                                   -- op
+    e : A                                             -- identity
+    ·IdL : (x : A) → e · x ≡ x                        -- left identity
+    ·IdR : (x : A) → x · e ≡ x                        -- right identity
+    ·Assoc : (x y z : A) → x · (y · z) ≡ (x · y) · z  -- associativity
+    is-set : isSet A                                  -- UIP
+```]
+
+In practice, we would want to separate the definition of the "essence" of the structure from its properties, since when working with #link(<hLevelSet>)[sets], most properties will be #link(<hLevelMereProp>)[mere propositions].
+For example, the `·IdL` is a #link(<hLevelMereProp>)[mere proposition] because its underlying type $A$ is a set, which means all paths in $A$ are mere propositions.
+In the @the_agda_community_cubical_2024 library, the properties are separated into a record called `IsMonoid`, and there is a corresponding `isPropIsMonoid`.
 
 == Abelian groups and modules
 
 #definition[Abelian group][
-  An abelian group $G$ consists of a set $G$, equipped with an identity element $0$, inverse function $-$, and a commutative binary operation, $(+)$ satisfying:
+  An abelian group $G$ consists of a set $G$, equipped with an identity element $0$, inverse function $-$, and a commutative binary operation, $(+)$ satisfying the following axioms:
   
   - associativity $propEq(a + (b + c), (a + b) + c)$
   - left- and right- identity $propEq(0 + a, a)$ and $propEq(a + 0, a)$
@@ -73,7 +185,7 @@ As is customary in algebra, we will represent the group and the underlying _carr
 The $0$ element of a group $G$ may be denoted $0_G$ when it benefits to know which group is being discussed.
 
 The binary operation is abstracted but since it behaves so much like addition in most contexts, we will use the plus $+$ operator to represent it.
-Likewise, we may use $op(+)_G$ to explicitly declare the group being used.
+Likewise, we may use $op(+)_G$ to explicitly declare the group being used. 
 
 #definition[Group homomorphism][
   A group homomorphism $f$ between abelian groups $A$ and $B$ is a function between the carrier sets $A$ and $B$, with the property that it preserves the group operation:
@@ -86,7 +198,13 @@ Likewise, we may use $op(+)_G$ to explicitly declare the group being used.
 #corollary[For a homomorphism $f$ between $A$ and $B$, $propEq(f(-a), -f(a)).$]
 
 #definition[Module][
-  For some ring $R$, a _left_ $R$-module $M$ consists of an abelian group as well as a scalar multiplication 
+  For some ring $R$, a _left_ $R$-module $M$ consists of an abelian group as well as a scalar multiplication operation $(dot)$ and multiplicative identity $1$ satisfying additional axioms:
+
+  - associativity $propEq((r dot s) dot x, r dot (s dot x))$
+  - distributivity $propEq((r + s) dot x, r dot x + s dot x)$ and $propEq(r dot (x + y), r dot x + r dot y)$
+  - left identity $propEq(1 dot x, x)$
+
+  Note that operations such as $r dot s$ and $r + s$ between elements of the ring $R$ use the ring's multiplication and addition operators rather than the group's.
 ]
 
 == Direct sum and grading
@@ -124,7 +242,9 @@ A principled way to represent such a structure in HoTT is by using a higher indu
 This approach creates a constructor for zero, each homogeneous element, an inductively defined constructor which represents addition, and paths representing the basic properties such as associativity and identity.
 
 However, for purposes of constructing a spectral sequence, we merely need the grading to uniformly manipulate pieces of this map.
-So using the higher inductive type approach leads to proving a lot of properties of direct sums that will not be useful for the goals in this paper, although they may be useful in general.
+Attempts at using this higher inductive type approach lead to proving many properties of direct sums that ended up not being useful for the goals in this paper, although they may be useful in general.
+For example, although there is no meaning in adding values of different homotopy groups together, this operation must still be defined and properties such as associativity proved for it.
+
 We will alternately define graded modules by _entirely ignoring_ the total module aspect as well as the structure requirement.
 
 #definition[Graded module][
@@ -141,10 +261,38 @@ We can have the functions be _degree-preserving_ -- meaning the functions in the
 
 $ isTyp(f_n, arro(A_n, B_n)) $
 
+#figure(diagram(
+  spacing: (0mm, 20mm), node-outset: 2mm,
+  {
+    node((-1, 0), $...$)
+    for i in range(6) { node((i, 0), $A_#i$, width: 16mm, shape: shapes.rect, stroke: black) }
+    node((6, 0), $...$)
+    node((-1, 1), $...$)
+    for i in range(6) { node((i, 1), $B_#i$, width: 16mm, shape: shapes.rect, stroke: black) }
+    node((6, 1), $...$)
+    for i in range(6) { edge((i, 0), (i, 1), "->", $f_#i$, label-anchor: "center", label-sep: 0mm, label-fill: true)}
+  }
+))
+
 However, we can have homomorphisms with degree shifts.
 We say a homomorphism has *degree* $k$, if the functions in the homomorphism shift the degrees of the codomain by $k$:
 
 $ isTyp(f_n, arro(A_n, B_(n+k))) $
+
+#figure(diagram(
+  spacing: (0mm, 20mm), node-outset: 2mm,
+  {
+    node((-1, 0), $...$)
+    for i in range(6) { node((i, 0), $A_#i$, name: "A" + str(i), width: 16mm, shape: shapes.rect, stroke: black) }
+    node((6, 0), $...$)
+    node((-1, 1), $...$)
+    for i in range(6) { node((i, 1), $B_#i$, name: "B" + str(i), width: 16mm, shape: shapes.rect, stroke: black) }
+    node((6, 1), $...$)
+    for i in range(4) {
+      let a = label("A" + str(i) + ".south")
+      edge(label("A" + str(i) + ".south"), label("B" + str(i+2) + ".north"), "->", $f_#i$, label-anchor: "center", label-sep: 0mm, label-fill: true)}
+  }
+))
 
 The degree of $f$ is denoted $deg(f)$.
 
@@ -155,7 +303,7 @@ As you can see, the codomain has two slightly different degrees.
 In HoTT, we can resolve this by transporting along the path given by the associativity of addition of groups.
 However, this transport will be present everywhere compositions are used.
 
-We follow the trick given by @FvDFormalizationHigherInductive2018 to avoid transports in homomorphism composition.
+We follow the trick given by @FvDFormalizationHigherInductive2018 to avoid excessive transports in homomorphism composition.
 
 #definition[Graded module homomorphism][
   For graded modules $A$ and $B$, a graded module homomorphism is a triple $(d, p, f)$ with the following data:
@@ -313,7 +461,7 @@ In this section we will summarize the definition and the properties of Eilenberg
 $ defEq((H A)_n, cases(K(G, n) &"if" n >= 0, 1 &"if" n < 0)) $
 
 where $1$ denotes the trivial pointed space consisting of a single element.
-The structure maps are defined as
+The structure maps are defined as: #TODO[finish]
 ] <EMSpectrum>
 
 
@@ -358,7 +506,7 @@ At its core, a spectral sequence is a bookkeeping tool for long exact sequences 
   Each page contains an infinite 2-dimensional grid of abelian groups, indexed by $isTyp((p, q), ZZ^2)$, denoted $E^(p, q)_r$.
 
   $d$ are maps between the abelian groups in $E$.
-  For page $r$, $d_r$ maps from $E^(p,q)_r$ to $E^(p+r,q-r+1)_r$. These maps are differentials, meaning consecutive $d_r$s compose to $0$.
+  For page $r$, $d_r$ maps from $E^(p,q)_r$ to $E^(p+r,q-r+1)_r$. These maps are differentials, meaning consecutive $d_r$ compose to $0$.
 ] <spectralSequence>
 
 #let stop_before(start, end, shorten, ..args) = {
@@ -452,7 +600,7 @@ This is what gives us the shifts in @spectralSequenceFigure.
 
 #theorem[Derived couple][
   Given an exact couple $(D, E, i, j, k)$, we can get a _derived_ exact couple $(D', E', i', j', k')$ that contains exactly the homological data required for future pages of the spectral sequence.
-]
+] <derivedCouple>
 #prf[
   This process is almost entirely an exercise in diagram chasing.
   In HoTT, we will also have the added burden of wrapping and unwrapping all of our data properly through truncations and quotients.
