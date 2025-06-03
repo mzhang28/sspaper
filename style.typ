@@ -5,9 +5,10 @@
   set text(
     // font: "New Computer Modern Math",
     // font: "Helvetica Neue",
-    // font: "Inter",
-    font: "DM Sans",
+    font: "Inter",
+    // font: "DM Sans",
     size: 12pt,
+    // top-edge: 0.7em, bottom-edge: -0.3em,
   )
   set page(
     "us-letter",
@@ -18,7 +19,7 @@
     // ],
   )
   set par(
-    // leading: 1.5em,
+    // leading: 1em,
     // spacing: 2.4em,
     // first-line-indent: 1.8em,
     justify: true,

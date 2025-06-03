@@ -35,6 +35,7 @@ Additionally, HoTT introduces _higher inductive types_, which generalize ordinar
 Cubical type theory @cohen_cubical_2016 is an extension of MLTT, a dependent type theory, that adds an interval-based path type for representing propositional equality, as opposed to the inductive identity type originally proposed by Martin-Löf.
 The intuition is to have a type $I$ with a DeMorgan structure (operations $and$, $or$, $not$) that can be composed to represent faces of $n$-dimensional cubes.
 The vertices of these cubes would be various terms to be identified.
+We discuss cubical type theory more in @cubicalPaths.
 
 An important operation on cubical path types is _homogeneous composition_.
 
@@ -120,7 +121,9 @@ In fact, we can take this one step further, with the following theorem due to @k
   There exists a function $isTyp(f', arro(norm(A)_1, B))$ such that $f' = |\_|_1 compose f$
 ] <propSetElim>
 
-== Cubical paths
+== Cubical paths <cubicalPaths>
+
+Cubical type theory @cohen_cubical_2016 uses an alternative 
 
 = Algebra
 
@@ -149,7 +152,7 @@ lemma =
 The left side is a restatement of the _type_ of the expression, while the right side is the proof term that shows why the term to its left is equal to the term on the next line.
 Under the hood, the `_≡⟨_⟩` is stitching together all the proof terms on the right side using path concatenation.
 
-The way we define algebraic structures in type theory is through records, which contain not only the underlying types of the structures but also all the operations and their properties.
+Next, defining algebraic structures in type theory is done through records, which contain not only the underlying types of the structures but also all the operations and their properties.
 This is akin to requiring all the properties to be proven in order to even show that the structure is well-defined.
 
 For example, consider the monoid. It could be defined this way:
@@ -166,7 +169,7 @@ record Monoid : Type (ℓ-suc ℓ) where
     is-set : isSet A                                  -- UIP
 ```]
 
-In practice, we would want to separate the definition of the "essence" of the structure from its properties, since when working with #link(<hLevelSet>)[sets], most properties will be #link(<hLevelMereProp>)[mere propositions].
+In practice, it is more customary to separate the definition of the "essence" of the structure from its properties, since when working with #link(<hLevelSet>)[sets], most properties will be #link(<hLevelMereProp>)[mere propositions].
 For example, the `·IdL` is a #link(<hLevelMereProp>)[mere proposition] because its underlying type $A$ is a set, which means all paths in $A$ are mere propositions.
 In the @the_agda_community_cubical_2024 library, the properties are separated into a record called `IsMonoid`, and there is a corresponding `isPropIsMonoid`.
 
@@ -179,7 +182,7 @@ In the @the_agda_community_cubical_2024 library, the properties are separated in
   - left- and right- identity $propEq(0 + a, a)$ and $propEq(a + 0, a)$
   - inverse $propEq(a + (- a), 0)$ and $propEq((- a) + a, 0)$
   - commutativity $propEq(a + b, b + a)$
-]
+] <abelianGroup>
 
 As is customary in algebra, we will represent the group and the underlying _carrier_ set with the same notation.
 The $0$ element of a group $G$ may be denoted $0_G$ when it benefits to know which group is being discussed.
@@ -206,6 +209,26 @@ Likewise, we may use $op(+)_G$ to explicitly declare the group being used.
 
   Note that operations such as $r dot s$ and $r + s$ between elements of the ring $R$ use the ring's multiplication and addition operators rather than the group's.
 ]
+
+== Subgroups and quotients
+
+#definition[Subgroup][A *subgroup* $H$ of a group $G$ is itself a group whose underlying subset $carrier(H)$ is a subset of the underlying set $carrier(G)$, such that the group and inverse operations remain closed in the subset.]
+
+Following the earlier examples of storing properties in records, we can encode the definition of a subgroup in cubical Agda as:
+
+```
+record isSubgroup (H : ℙ G) : Type ℓ where
+  field
+    id-closed  : (1g ∈ H)
+    op-closed  : {x y : G} → x ∈ H → y ∈ H → x · y ∈ H
+    inv-closed : {x : G} → x ∈ H → inv x ∈ H
+```
+
+where `(H : ℙ G)` indicates that `H` is an element of the power set of $carrier(G)$.
+The power set is defined as a kind of proposition over the underlying elements.
+For example, if $G$ is the group of all natural numbers $NN$ and $H$ is the subset comprising of natural numbers satisfying the proposition $sans("isEven")$, an element $h$ of $H$ could be the pair $(2, p)$ where $p$ is an element of $sans("isEven")(2)$.
+
+A couple examples of subgroups we will encounter quite often are _images_ and _kernels_.
 
 == Direct sum and grading
 
@@ -296,14 +319,19 @@ $ isTyp(f_n, arro(A_n, B_(n+k))) $
 
 The degree of $f$ is denoted $deg(f)$.
 
+A straightforward way of defining this would be as a pair of some degree shift $d$ and a family of functions $(isTyp(i, G)) -> sans("AbGroupHom")(A_i, B_(i + d))$.
+
 One problem that crops up when defining homomorphisms the "obvious" way is that when computing a composition of two homomorphisms $defEq(h, g compose f)$, we would like to get a homomorphism of degree $deg(f) + deg(g)$.
 This means functions in $h$ must be of type $arro(A_n, A_(n + (deg(f) + deg(g))))$.
 However, in order to compose $g$ with $f$, we must use the degree-$(n+deg(f))$ piece of $g$, giving us $isTyp((g_(n + deg(f)) compose f_n), arro(A_n, A_((n + deg(f)) + deg(g))))$.
 As you can see, the codomain has two slightly different degrees.
-In HoTT, we can resolve this by transporting along the path given by the associativity of addition of groups.
-However, this transport will be present everywhere compositions are used.
 
-We follow the trick given by @FvDFormalizationHigherInductive2018 to avoid excessive transports in homomorphism composition.
+In HoTT, this equality is unfortunately not definitional. We do _assume_ associativity as a #link(<abelianGroup>)[group axiom], however, we do not have the ability to uniformly refer to elements of the codomain.
+An element $m$ cannot simultaneously occur in type $A_((a + b) + c)$ and $A_(a + (b + c))$.
+Given that this is such a fundamental layer, these type discrepancies will poison every operation we would like to do involving composition.
+
+@FvDFormalizationHigherInductive2018 utilizes a clever trick to avoid excessive transports in homomorphism composition.
+By making graded functions _defined_ by the "endpoints" and propositionally proving their relationship to the degree shift $d$, we can eliminate many (but not all) transports dealing with codomain degree confusion.
 
 #definition[Graded module homomorphism][
   For graded modules $A$ and $B$, a graded module homomorphism is a triple $(d, p, f)$ with the following data:
@@ -312,6 +340,41 @@ We follow the trick given by @FvDFormalizationHigherInductive2018 to avoid exces
   - $isTyp(p, (i : G) -> propEq(d(i), i + d(0)))$.
   - $isTyp(f, (i, j : G) -> (p : propEq(d(i), j)) -> LeftModuleHom(A_i, B_j))$.
 ]
+
+Note that $d$ is a _type_ equivalence rather than a group equivalence.
+The group equivalence would require the underlying function to respect the group operation, which a degree shift such as $lambda x . x + d$ would not: $(x + y) + d eq.not (x + d) + (y + d)$.
+But we only need this equivalence for relating indexes, so their group property is not desired.
+
+For example, using this definition makes composition simpler: $g compose f$ is a three-way composition of parts:
+
+- the degree can be composed by transitivity of equivalences
+- $p$ can be proven for all $i$ using some simple algebra
+- composing $f_i$ with $g_(i + deg(f))$ is a straightforward composition of group homomorphisms, since the grading lines up properly: given some $isTyp(i\, j, G)$ and a proof $isTyp(p, propEq((i + deg(f)) + deg(g), j))$, we can compose the functions
+  
+  $
+   isTyp(f(i, i + d, refl), arro(A_i, B_(i + deg(f)))) \
+   isTyp(g(i + deg(f), j, p), arro(A_(i + deg(f)), B_j)) $
+
+Although this method makes compositions easier, transports may not be eliminated completely.
+For instance, in defining the graded quotient map $A -> A / S$, we encounter a non-definitional identity between $d$ and $d + 0$.
+This had to be resolved via composition with essentially a "transporting" homomorphism from $A_d$ to $A_(d + 0)$.
+For cases like this, it became easier to manage by writing computation rules that provided the path between the high-level objects of interest directly, hiding the transports.
+For example:
+
+#text(size: 10pt)[```
+mkGAGHom' : (d : Id ≃ Id) 
+  → (pd : (i : Id) → d .fst i ≡ (i + d .fst 0g)) 
+  → ((i : Id) → AbGroupHom (A i) (B (d .fst i))) 
+  → GAGHom A B
+mkGAGHom' d pd fn = mkGAGHom d pd (λ {i} {j} p → compGroupHom (fn i) (transportHom (cong B p)))
+
+mkGAGHom'-compute : (d : Id ≃ Id) 
+  → (pd : (i : Id) → d .fst i ≡ (i + d .fst 0g)) 
+  → (fn : (i : Id) → AbGroupHom (A i) (B (d .fst i))) 
+  → (id : Id) → (m : ⟨ A id ⟩)
+  → ((mkGAGHom' d pd fn →, id) .fst m) ≡ (fn id .fst m)
+mkGAGHom'-compute d pd fn id m i = transportRefl (transportRefl (fn id .fst m) i) i
+```]
 
 = Homotopy Theory
 
@@ -612,6 +675,8 @@ This is what gives us the shifts in @spectralSequenceFigure.
 
 == Convergence
 
+
+
 == Atiyah-Hirzebruch Spectral Sequence
 
 
@@ -623,5 +688,4 @@ This is what gives us the shifts in @spectralSequenceFigure.
 - Thoughts on Agda
   - as a proof assistant
   - for learning math
-  
-#TODO[in the type theory section, talk about the pattern of Carrier, Structure where the structure is typically a prop]
+
