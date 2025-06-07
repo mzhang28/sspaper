@@ -24,6 +24,8 @@ $ sans("append") : sans("Vec")(m) -> sans("Vec")(n) -> sans("Vec")(m+n) $
 Using this concept, we can define an identity type parameterized by two terms $x, y : A$ representing their equality.
 Such a type is often written $sans("Id")_A (x, y)$, or $x op(=)_A y$, or even just $x = y$, when their type $A$ is obvious.
 
+#TODO[Curry-howard correspondence]
+
 Homotopy type theory (HoTT) @hottbook extends this type theory with the *univalence axiom*, which unifies the notion of equivalence and identity:
 
 $ (A tilde.eq B) tilde.eq (A = B) $
@@ -68,7 +70,26 @@ Here is a link to some of the main theorems that have been proven:
 
 In addition, much of the theory of graded modules had to be developed for cubical Agda.
 
-== Higher inductive types
+== Higher inductive types <higherInductiveType>
+
+One prominent feature of homotopy type theory is *higher inductive types* (HITs), where the word "higher" refers to "higher-dimensional paths".
+The idea is to allow certain data types to have both "point" constructors, which are found in ordinary inductive types, and special path constructors, which can identifying elements of the data type.
+
+One major benefit is that certain topological spaces are expressible synthetically.
+For example, a circle, which comprises of a base point and a loop, can be directly expressed as a constructor $base$ and a path constructor $loop$.
+
+$ isTyp(base, S^1) \
+isTyp(loop, propEq(base, base)) $
+
+For an ordinary inductive type, we must handle each constructor in order to write a valid eliminator for the overall type.
+Higher inductive types are the same, except for the path constructors we must provide paths in the type being mapped to, and prove its coherence.
+For example, for the circle, if we wanted to write a function $f$ to eliminate any circle to a type $C$, we would have to provide:
+
+- $isTyp(c_base, C)$ for the $base$ case
+- $isTyp(c_loop, propEq(c_base, c_base))$ for the $loop$ case
+- a proof that $propEq(ap_f(loop), c_loop)$
+
+This gives us a clean formulation for _quotients_, which we will discuss
 
 == Homotopy levels
 
@@ -118,12 +139,17 @@ In fact, we can take this one step further, with the following theorem due to @k
   - $B$ is a set (homotopy level 2)
   - $f$ is _weakly constant_ (in other words, for all $isTyp(x\, y, A)$, $propEq(f(x), f(y))$)
 
-  There exists a function $isTyp(f', arro(norm(A)_1, B))$ such that $f' = |\_|_1 compose f$
+  There exists a function $isTyp(f', arro(norm(A)_1, B))$ such that $f' = |-|_1 compose f$
 ] <propSetElim>
 
 == Cubical paths <cubicalPaths>
 
-Cubical type theory @cohen_cubical_2016 uses an alternative 
+Cubical type theory @cohen_cubical_2016 uses an alternative definition for the equality type.
+Rather than an inductive path type with a single constructor
+
+#TODO[J rule]
+
+#TODO[canonicity]
 
 = Algebra
 
@@ -226,9 +252,26 @@ record isSubgroup (H : ℙ G) : Type ℓ where
 
 where `(H : ℙ G)` indicates that `H` is an element of the power set of $carrier(G)$.
 The power set is defined as a kind of proposition over the underlying elements.
-For example, if $G$ is the group of all natural numbers $NN$ and $H$ is the subset comprising of natural numbers satisfying the proposition $sans("isEven")$, an element $h$ of $H$ could be the pair $(2, p)$ where $p$ is an element of $sans("isEven")(2)$.
+For example, if $G$ is the group of all natural numbers $NN$, and $H$ is the subset comprising of natural numbers satisfying the proposition $sans("isEven")$, then an element $h$ of $H$ could be the pair $(2, p)$ where $p$ is an element of $sans("isEven")(2)$.
+
+== Images and kernels
 
 A couple examples of subgroups we will encounter quite often are _images_ and _kernels_.
+
+The image of a homomorphism (or more generally, any function) is the set of all elements of the codomain that are mapped by the homomorphism.
+The only way to provide a witness of this fact is to provide the corresponding member of the domain.
+For some homomorphism $isTyp(f, A -> B)$, we may want to define $sans("isInIm")(f,a)$, then, as $sum_(isTyp(a,A)) propEq(f(a),b)$.
+However, this leads us to a problem: if there happened to be different proofs of $propEq(f(a),b)$, we would have different elements of the image, leading to potentially _more_ elements in the image than the codomain.
+In fact, we don't even want to know which elements $a$ of the domain map to $b$, since there may be multiple such $a$'s.
+Thus the best way to define the image is by propositionally truncating the proof.
+
+#definition[Image][Let $f$ be a homomorphism from $A$ to $B$. Let $a$ be any element from $A$, and $b$ from $B$. Then, the proposition $sans("isInIm")$ is defined as:
+
+$ defEq(sans("isInIm")(f,b), norm(sum_(isTyp(a,A)) propEq(f(a),b))_1) $
+
+The image subtype of $B$ is:
+
+$ defEq(sans("Im")(f), sum_(isTyp(b,B)) sans("isInIm")(f,b)) $] <image>
 
 == Direct sum and grading
 
@@ -355,7 +398,7 @@ For example, using this definition makes composition simpler: $g compose f$ is a
    isTyp(f(i, i + d, refl), arro(A_i, B_(i + deg(f)))) \
    isTyp(g(i + deg(f), j, p), arro(A_(i + deg(f)), B_j)) $
 
-Although this method makes compositions easier, transports may not be eliminated completely.
+Although this method makes compositions easier, transports are not eliminated entirely.
 For instance, in defining the graded quotient map $A -> A / S$, we encounter a non-definitional identity between $d$ and $d + 0$.
 This had to be resolved via composition with essentially a "transporting" homomorphism from $A_d$ to $A_(d + 0)$.
 For cases like this, it became easier to manage by writing computation rules that provided the path between the high-level objects of interest directly, hiding the transports.
@@ -376,19 +419,32 @@ mkGAGHom'-compute : (d : Id ≃ Id)
 mkGAGHom'-compute d pd fn id m i = transportRefl (transportRefl (fn id .fst m) i) i
 ```]
 
+To make managing grading slightly easier, we use functions `f →, i` and `f ←, j`, which represent functions 'starting at' index $i$ and functions 'landing in' index $j$, respectively.
+More precisely, these functions have the following types:
+
+$
+  isTyp((f -> i), sans("GroupHom")(A_i, B_(i + deg(f)))) \
+  isTyp((f <- i), sans("GroupHom")(A_(i - deg(f)), B_i)) \
+$
+
 = Homotopy Theory
+
+The primary goal of algebraic topology is to distinguish spaces by using algebraic invariants to measure holes.
 
 == Homotopy groups
 
+One of the fundamental ways to classify spaces is by measuring its holes using homotopy groups.
+
 #definition[Homotopy group][The $n$th homotopy group of a pointed space $A$ is defined as
 
-$ defEq(pi_n (A), norm(Omega^n (A))_0) $]
+$ defEq(pi_n (A), norm(Omega^n (A))_0) $] <homotopyGroup>
 
-#property[For all $n > 1$, $pi_n (X)$ is an abelian group.] <homotopyGroup>
+#property[For all $n > 1$, $pi_n (X)$ is an abelian group.]
+
 
 == Exactness and exact sequences
 
-#definition[Exactness][Given pointed types $A, B, C$ and pointed functions $isTyp(f, arro(A, B))$ and $isTyp(g, arro(B, C))$, we say $f$ and $g$ are *exact* if $propEq(imOf(f), kerOf(g))$.]
+#definition[Exactness][Given pointed types $A, B, C$ and pointed functions $isTyp(f, arro(A, B))$ and $isTyp(g, arro(B, C))$, we say $f$ and $g$ are *exact* if the #link(<image>)[image] $imOf(f)$ is equivalent to the kernel $kerOf(g)$.]
 
 #figure(canvas({
   import cetz.draw: *
@@ -434,7 +490,15 @@ $ defEq(pi_n (A), norm(Omega^n (A))_0) $]
   )
 }), caption: $sans("Im")(f) = sans("Ker")(g)$)
 
-As a direct consequence, the composition $g compose f$ always results in the trivial map that maps everything to $0$.
+In the formalization, we represent this equivalence as a pair of functions, as shown below, since the conversion functions are the only parts that are important to our formalization.
+It can be shown that having these two functions are sufficient for proving the entire equivalence, due to the fact that $C$ is a #link(<hLevelSet>)[set] and images are propositionally truncated.
+
+```
+im∈ker : isInIm f b → isInKer g b
+ker∈im : isInKer g b → isInIm f b
+```
+
+// As a direct consequence, the composition $g compose f$ always results in the trivial map that maps everything to $0$. 
 This definition of exactness also specializes to groups and modules, since those are simply pointed types with more structure.
 
 A series of functions where every pair of consecutive functions are exact is called an _exact sequence_.
@@ -455,7 +519,7 @@ This corresponds to the fact that $f$ is *surjective*.
 These two facts combined tell us that $f$ is an *isomorphism*.
 
 An exact sequence is considered _long_ if it spans infinitely in one or both directions.
-For example, the long exact sequence of homotopy groups relates the $n$th homotopy groups derived from a pointed function $f$:
+For example, the long exact sequence of #link(<homotopyGroup>)[homotopy groups] relates the $n$th homotopy groups derived from a pointed function $f$:
 
 #figure(diagram(spacing: 12mm, label-sep: 1mm,
   node($pi_1 (B)$), edge("<-"),
@@ -505,7 +569,7 @@ The indexing type is written here as $ZZ$, but in reality it can be any infinite
 
 #definition[Homotopy group of a spectrum][]
 
-== Eilenberg-MacLane spectra
+== Eilenberg-MacLane space and spectra
 
 There is a construction known as the Eilenberg-MacLane space, which forms an $Omega$-spectrum.
 Using the representability theorem due to @brown_cohomology_1962, this spectrum exactly represents ordinary cohomology.
@@ -535,8 +599,19 @@ However, homotopy groups are notoriously difficult to compute.
 For example, as of writing, we only know the homotopy groups of spheres up to dimension 90.
 Tools like homology and cohomology give us an approximation of this information.
 
+Homology and cohomology are #TODO[high-level intuition for cohomology]
+
+#TODO[cohomology cup product ring structure]
+
 The properties of various cohomologies have been distilled into axioms, known as the Eilenberg-Steenrod axioms, due to @eilenberg_axiomatic_1945.
-Furthermore, it was shown in @brown_cohomology_1962 @adams_variant_1971 that any generalized cohomology theory that satisfies these axioms is "representable" by a spectrum.
+Furthermore, it was shown in @brown_cohomology_1962 @adams_variant_1971 that any cohomology theory that satisfies these axioms (a "generalized" cohomology theory) is representable by a spectrum.
+
+#theorem[Representability][
+#TODO[restate the theorem here]
+]
+
+@brown_cohomology_1962 additionally shows that "ordinary" singular cohomology is representable by the #link(<EMSpectrum>)[Eilenberg-MacLane spectrum].
+Due to the difficulty #TODO[cite] of constructing singular cohomology directly in HoTT, we treat the Eilenberg-MacLane spectrum representation _as_ the definition of cohomology we will use for further constructions.
 
 = Spectral sequences
 
@@ -559,6 +634,7 @@ Furthermore, it was shown in @brown_cohomology_1962 @adams_variant_1971 that any
 
 Let us begin with a high level discussion of spectral sequences.
 At its core, a spectral sequence is a bookkeeping tool for long exact sequences of (co)homology groups.
+There are many different kinds of spectral sequences, 
 
 ...
 
@@ -634,11 +710,14 @@ Although these pages are infinite, we typically operate solely in the first quad
 Exact couples, due to @massey_exact_1952, are a convenient way to "wrap" up the data of a spectral sequence such that its grading can be treated uniformly.
 They arise naturally from the classical construction of the Serre spectral sequence, as described in @hatcher_spectral_2004.
 
-We want to represent spectral sequence data this way because it provides extra information that we can use to determine the $d$s of future pages, that the spectral sequence structure doesn't carry by itself.
+It is convenient to represent spectral sequence data this way because it provides extra information that we can use to determine the $d$s of future pages, that the spectral sequence structure doesn't carry by itself.
+To get from an exact couple to a spectral sequence, we can simply "forget" some components of our exact couple.
+Note that while all exact couples give rise to a spectral sequence, not all spectral sequences are necessarily derived from an exact couple.
 In this section, we will describe how to iterate an exact couple, and how to use an exact couple to construct a spectral sequence.
 
-Notice that due to the graded nature of the modules, when iterating the exact couples, the degrees of our homomorphisms will slowly shift.
-This is what gives us the shifts in @spectralSequenceFigure.
+// TODO: Figure out where to put this sentence
+// Notice that due to the graded nature of the modules, when iterating the exact couples, the degrees of our homomorphisms will slowly shift.
+// This is what gives us the shifts in @spectralSequenceFigure.
 
 #definition[Exact couple][
   An exact couple $(D, E, i, j, k)$ consists of two graded modules $D, E$ as well as morphisms
@@ -661,16 +740,109 @@ This is what gives us the shifts in @spectralSequenceFigure.
   ), caption: "Exact couple")
 ]
 
+In the classical construction of a Serre spectral sequence, this structure may arise when you notice that the homology groups of filtrations of a space (for example, $n$-cells of a CW complex) fit into a pattern.
+
+#text(size: 0.8em)[
+#figure(diagram(spacing: (4mm, 6mm), {
+  let h = 0
+  let sub(x, s, n) = if n == 0 { $#x _#s$ } else if n > 0 { $#x _(#s + #n)$ } else { $#x _(#s - #(- n))$ }
+  let isH(x, y) = (calc.floor((x - 2 * y) / 3) == h)
+  let x0 = -2
+  let y0 = -1
+  let w = 5
+  let h = 3
+  for x in range(x0, x0 + w) {
+    for y in range(y0, y0 + h) {
+      let nIdx = - calc.floor(x / 2)
+      let pIdx = nIdx + y
+      let colorOf(t) = if t { black } else { gray }
+
+      let debug = $#calc.floor((x - 2 * y) / 3) \ $
+ 
+      if calc.rem(x, 2) == 0 {
+        node((x, y), text(fill: colorOf(isH(x, y)))[$sub(H, n, #nIdx) (sub(X, p, #pIdx))$])
+      } else {
+        node((x, y), text(fill: colorOf(isH(x, y)))[$sub(H, n, #nIdx) (sub(X, p, #pIdx), sub(X, p, #(pIdx - 1)))$])
+      }
+
+      let mkArrow(x1, y1, x2, y2) = {
+        let name = if calc.rem(x1, 2) == 0 { if y1 == y2 { $j$ } else { $i$ } } else { $k$ }
+        let col = colorOf(isH(x1, y1) and isH(x2, y2))
+        edge((x1, y1), (x2, y2), "->", stroke: col, text(fill: col, size: 0.8em, name))
+      }
+      
+      mkArrow(x, y, x + 1, y)
+      if x == x0 { mkArrow(x - 1, y, x, y) }
+
+      if calc.rem(x, 2) == 0 {
+        mkArrow(x, y, x, y + 1)
+        if y == y0 { mkArrow(x, y - 1, x, y) }
+      }
+    }
+  }
+}), caption: [Long exact sequence staircase diagram])  <lesStaircase>
+]
+
+Each highlighted staircase sequence shown in @lesStaircase is a long exact sequence of homology groups.
+The even columns have the cohomology 
+
+The insight here is that the groups in even columns have the same "shape" of $H_n (X_p)$ for some $n$ and $p$, while all the odd-columns have the same "shape" of $H_n (X_p, X_(p-1))$ for some $n$ and $p$.
+Graded groups give us exactly the tools necessary to deal with morphisms in this kind of diagram. 
+We can wrap the even and odd columns into a 2 different graded groups $D$ and $E$ that are each indexed by a pair $(n,p)$, and the morphisms between them are simply graded group homomorphisms with the degree shifts required by the staircase diagram above.
+
+Taking these $E$'s along with the connecting morphism $defEq(d, j compose k)$ gives us the first page of our spectral sequence.
+
+#text(size: 0.8em)[
+#figure(diagram(spacing: 4mm, {
+  let h = 0
+  let sub(x, s, n) = if n == 0 { $#x _#s$ } else if n > 0 { $#x _(#s + #n)$ } else { $#x _(#s - #(- n))$ }
+  let isH(x, y) = calc.rem(calc.abs(x), 2) == 1
+  let x0 = -2
+  let y0 = -1
+  let w = 5
+  let h = 3
+  for x in range(x0, x0 + w) {
+    for y in range(y0, y0 + h) {
+      let nIdx = - calc.floor(x / 2)
+      let pIdx = nIdx + y
+      let colorOf(t) = if t { black } else { rgb("#ddd") }
+
+      let debug = $#calc.floor((x - 2 * y) / 3) \ $
+ 
+      if calc.rem(x, 2) == 0 {
+        node((x, y), text(fill: colorOf(isH(x, y)))[$sub(H, n, #nIdx) (sub(X, p, #pIdx))$])
+      } else {
+        node((x, y), text(fill: colorOf(isH(x, y)))[$sub(H, n, #nIdx) (sub(X, p, #pIdx), sub(X, p, #(pIdx - 1)))$])
+      }
+      
+      edge((x, y), (x + 1, y), "->", stroke: colorOf(isH(x, y) and isH(x + 1, y)))
+      if x == x0 { edge((x - 1, y), (x, y), "->", stroke: colorOf(isH(x, y) and isH(x - 1, y))) }
+
+      if calc.rem(x, 2) == 0 {
+        edge((x, y), (x, y + 1), "->", stroke: colorOf(isH(x, y) and isH(x, y + 1)))
+        if y == y0 { edge((x, y - 1), (x, y), "->", stroke: colorOf(isH(x, y) and isH(x, y - 1))) }
+      } else {
+        edge((x, y), (x + 2, y), bend: 5deg, stroke: black, "->", $d$)
+        if calc.abs(x - x0) <= 1 {
+        edge((x - 2, y), (x, y), bend: 5deg, stroke: black, "->", $d$)
+        }
+      }
+    }
+  }
+}), caption: [First page of the spectral sequence])
+]
+
+
 #theorem[Derived couple][
   Given an exact couple $(D, E, i, j, k)$, we can get a _derived_ exact couple $(D', E', i', j', k')$ that contains exactly the homological data required for future pages of the spectral sequence.
 ] <derivedCouple>
 #prf[
-  This process is almost entirely an exercise in diagram chasing.
+  This process involves a proof technique called diagram chasing.
   In HoTT, we will also have the added burden of wrapping and unwrapping all of our data properly through truncations and quotients.
 
   First, we have $defEq(D', imOf(i))$.
 
-  First, define $defEq(d, j compose k)$. Notice that this goes around the triangle in a strange way, not following the arrows.
+  Before we define , define $defEq(d, j compose k)$. Notice that this goes around the triangle in a strange way, not following the arrows.
 ]
 
 == Convergence

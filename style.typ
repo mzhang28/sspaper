@@ -5,14 +5,16 @@
   set text(
     // font: "New Computer Modern Math",
     // font: "Helvetica Neue",
-    font: "Inter",
+    // font: "Inter",
     // font: "DM Sans",
     size: 12pt,
     // top-edge: 0.7em, bottom-edge: -0.3em,
   )
   set page(
-    "us-letter",
-    margin: 1in,
+    // "us-letter",
+    // margin: 1in,
+    width: 6.5in, height: 10.5in, margin: 0.25in,
+    
     numbering: "1 of 1",
     // footer: [
     //   // #align(center, counter(page).display("1"))
@@ -24,11 +26,13 @@
     // first-line-indent: 1.8em,
     justify: true,
   )
+  // set par.line(numbering: n => text(size: 0.75em)[#n])
   set heading(
-    numbering: "1.1",
+    numbering: "1.1"
   )
 
   show: thmrules
+  show raw: set text(font: "Fira Mono")
   // show link: body => underline(text(fill: rgb("#009900"), body))
   show link: body => text(fill: rgb("#000099"), body)
   set cite(style: "citation.csl")
