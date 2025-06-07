@@ -1,6 +1,16 @@
 #import "@preview/cetz:0.3.1" as cetz: canvas, draw
 #import "@preview/ctheorems:1.1.3": *
 
+#let load-bib(main: false) = {
+  counter("bibs").step()
+
+  context if main {
+    [#bibliography("./zotero.bib") <main-bib>]
+  } else if query(<main-bib>) == () and counter("bibs").get().first() == 1 {
+    bibliography("./zotero.bib")
+  }
+}
+
 #let template(title: "", bib: "zotero.bib", content) = {
   set text(
     // font: "New Computer Modern Math",
@@ -10,16 +20,6 @@
     size: 12pt,
     // top-edge: 0.7em, bottom-edge: -0.3em,
   )
-  set page(
-    // "us-letter",
-    // margin: 1in,
-    width: 6.5in, height: 10.5in, margin: 0.25in,
-    
-    numbering: "1 of 1",
-    // footer: [
-    //   // #align(center, counter(page).display("1"))
-    // ],
-  )
   set par(
     // leading: 1em,
     // spacing: 2.4em,
@@ -27,17 +27,22 @@
     justify: true,
   )
   // set par.line(numbering: n => text(size: 0.75em)[#n])
-  set heading(
-    numbering: "1.1"
-  )
+  set heading(numbering: "1.1")
 
   show: thmrules
   show raw: set text(font: "Fira Mono")
   // show link: body => underline(text(fill: rgb("#009900"), body))
   show link: body => text(fill: rgb("#000099"), body)
-  set cite(style: "citation.csl")
+  // set cite(style: "citation.csl")
+  set cite(style: "alphanumeric")
   show cite: set text(fill: rgb("#060")) 
   show math.frac: it => [#it.num #sym.slash #it.denom]
+  set page(
+    // "us-letter",
+    // margin: 1in,
+    width: 6.5in, height: 10.5in, margin: 0.25in,
+    numbering: "1 of 1",
+  )
 
   // show heading: set block(above: 1.4em, below: 1em)
 
@@ -63,7 +68,14 @@
   pagebreak()
 
   heading(outlined: false, numbering: none)[References]
-  bibliography(bib, title: none)
+  // bibliography(bib, title: none)
+  load-bib(main: true)
+}
+
+#let chapter(content) = {
+  set heading(numbering: "1.1")
+  content
+  load-bib()
 }
 
 #let TODO(c) = [#text(fill: red)[*TODO:* #c]]
