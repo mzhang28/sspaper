@@ -72,8 +72,12 @@
   load-bib(main: true)
 }
 
+#let handle-link(link) = {}
+
 #let chapter(content) = {
   set heading(numbering: "1.1")
+  show link: link => handle-link(link)
+  show: thmrules
   content
   load-bib()
 }
