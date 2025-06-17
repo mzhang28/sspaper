@@ -11,7 +11,7 @@
   }
 }
 
-#let template(title: "", bib: "zotero.bib", content) = {
+#let common-styles(doc) = {
   set text(
     // font: "New Computer Modern Math",
     // font: "Helvetica Neue",
@@ -26,7 +26,7 @@
     // first-line-indent: 1.8em,
     justify: true,
   )
-  // set par.line(numbering: n => text(size: 0.75em)[#n])
+  
   set heading(numbering: "1.1")
 
   show: thmrules
@@ -38,13 +38,16 @@
   show cite: set text(fill: rgb("#060")) 
   show math.frac: it => [#it.num #sym.slash #it.denom]
   set page(
-    // "us-letter",
-    // margin: 1in,
+    // "us-letter", margin: 1in,
     width: 6.5in, height: 10.5in, margin: 0.25in,
     numbering: "1 of 1",
   )
+  
+  doc
+}
 
-  // show heading: set block(above: 1.4em, below: 1em)
+#let template(title: "", bib: "zotero.bib", content) = {
+  show: doc => common-styles(doc)
 
   align(center)[
     #heading(outlined: false, numbering: none, text(size: 2em)[#title])
@@ -68,13 +71,15 @@
   pagebreak()
 
   heading(outlined: false, numbering: none)[References]
-  // bibliography(bib, title: none)
   load-bib(main: true)
 }
 
-#let handle-link(link) = {}
+#let handle-link(link) = {
+  text(fill: blue, link.body)
+}
 
 #let chapter(content) = {
+  show: doc => common-styles(doc)
   set heading(numbering: "1.1")
   show link: link => handle-link(link)
   show: thmrules
@@ -175,3 +180,5 @@
 #let LeftModule = $sans("LeftModule")$
 #let LeftModuleHom = $sans("LeftModuleHom")$
 #let deg = $sans("deg")$
+
+#let pt = $sans("pt")$

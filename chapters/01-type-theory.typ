@@ -14,14 +14,21 @@ $ sans("append") : sans("Vec")(m) -> sans("Vec")(n) -> sans("Vec")(m+n) $
 
 Using this concept, we can define an identity type parameterized by two terms $x, y : A$ representing their equality.
 Such a type is often written $sans("Id")_A (x, y)$, or $x op(=)_A y$, or even just $x = y$, when their type $A$ is obvious.
+This reflects the idea of "propositions as types", also known as the Curry-Howard correspondence.
 
-#TODO[Curry-howard correspondence]
+Due to its more computational nature, dependent type theory lends itself to computer automation, which has led to it being used as a foundational theory upon which many theorem provers and proof assistants are built.
 
-Homotopy type theory (HoTT) @hottbook extends this type theory with the *univalence axiom*, which unifies the notion of equivalence and identity:
+Homotopy type theory (HoTT) @hottbook extends this type theory by interpreting identity as paths in a topological space, which allows the existence of paths between paths, or "higher"-dimensional paths.
+Unlike proof-irrelevant systems, this allows multiple non-identical elements of the same identity type.
+Homotopy type theory gives us the language to codify the existence of paths with different underlying behavior with the *univalence axiom*, which unifies the notion of equivalence and identity:
 
 $ (A tilde.eq B) tilde.eq (A = B) $
 
-This equivalence is introduced to MLTT as an _axiom_, and it allows us to recover nice properties such as function extensionality that otherwise cannot be proven with just MLTT.
+A classic example is that the set of booleans is equivalent to itself in two different ways, identity and negation.
+Transporting a boolean element along their corresponding paths will result in opposite values.
+Univalence also allows us to recover nice properties such as function extensionality that otherwise cannot be proven with just MLTT.
+
+In the original version of HoTT formulated in @hottbook, univalence is introduced as an _axiom_, as it cannot be proven
 
 Additionally, HoTT introduces _higher inductive types_, which generalize ordinary inductive types but allow for construction of identity types (path constructors) as well as ordinary terms (also called point constructors).
 
@@ -43,30 +50,15 @@ An important operation on cubical path types is _homogeneous composition_.
   edge(<y>, <z>, "->", $q$, label-side: right),
 ))
 
-== Mechanization
-
-Agda @agda_developers_agda_2025 is a dependently typed programming language and proof assistant developed at the Chalmers University of Technology.
-
-The construction presented here is based on work by @FvDFormalizationHigherInductive2018.
-Our results are mechanized using Cubical Agda @vezzosi_cubical_2021.
-Much of the formalization also uses an existing library of work by others, collectively available at https://github.com/agda/cubical/.
-
-The work accompanying this paper can be found at https://git.mzhang.io/michael/msthesis.
-Here is a link to some of the main theorems that have been proven:
-
-// #table(stroke: none, columns: (auto, 1fr),
-//   table.header([*Theorem*], [*Link*]),
-//   [@derivedCouple], [#link("https://git.mzhang.io/michael/msthesis/src/branch/main/src/ExactCouple/Derived.agda")[`ExactCouple.Derived.derivedCouple`]],
-// )
-
-In addition, much of the theory of graded modules had to be developed for cubical Agda.
-
 == Higher inductive types <higherInductiveType>
 
 One prominent feature of homotopy type theory is *higher inductive types* (HITs), where the word "higher" refers to "higher-dimensional paths".
-The idea is to allow certain data types to have both "point" constructors, which are found in ordinary inductive types, and special path constructors, which can identifying elements of the data type.
+Ordinary inductive types are comprised of _point_ constructors, which construct elements in the type, while higher inductive types also include _path_ constructors, which construct non-trivial higher-dimensional paths in the type.
 
-One major benefit is that certain topological spaces are expressible synthetically.
+For example, one of the major benefits of higher inductive types is that it creates a principled definition of quotients.
+Compared to other ways of defining quotients, HIT quotients have nice computational properties while also avoiding the "setoid hell" of coherences, as well as being "effective" -- being able to recover the original equivalence relation.
+
+Another benefit is that certain topological spaces are expressible synthetically.
 For example, a circle, which comprises of a base point and a loop, can be directly expressed as a constructor $base$ and a path constructor $loop$.
 
 $ isTyp(base, S^1) \
@@ -80,7 +72,7 @@ For example, for the circle, if we wanted to write a function $f$ to eliminate a
 - $isTyp(c_loop, propEq(c_base, c_base))$ for the $loop$ case
 - a proof that $propEq(ap_f(loop), c_loop)$
 
-This gives us a clean formulation for _quotients_, which we will discuss
+
 
 == Homotopy levels
 
@@ -141,3 +133,21 @@ Rather than an inductive path type with a single constructor
 #TODO[J rule]
 
 #TODO[canonicity]
+
+== Mechanization
+
+Agda @agda_developers_agda_2025 is a dependently typed programming language and proof assistant developed at the Chalmers University of Technology.
+
+The construction presented here is based on work by @FvDFormalizationHigherInductive2018.
+Our results are mechanized using Cubical Agda @vezzosi_cubical_2021.
+Much of the formalization also uses an existing library of work by others, collectively available at https://github.com/agda/cubical/.
+
+The work accompanying this paper can be found at https://git.mzhang.io/michael/msthesis.
+Here is a link to some of the main theorems that have been proven:
+
+// #table(stroke: none, columns: (auto, 1fr),
+//   table.header([*Theorem*], [*Link*]),
+//   [@derivedCouple], [#link("https://git.mzhang.io/michael/msthesis/src/branch/main/src/ExactCouple/Derived.agda")[`ExactCouple.Derived.derivedCouple`]],
+// )
+
+In addition, much of the theory of graded modules had to be developed for cubical Agda.

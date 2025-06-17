@@ -22,20 +22,28 @@
 
 // $ cal(E)^n (X) :equiv norm(X -> Y_n)_0 $
 
-Let us begin with a high level discussion of spectral sequences.
-At its core, a spectral sequence is a bookkeeping tool for long exact sequences of (co)homology groups.
-There are many different kinds of spectral sequences, 
+At its core, a spectral sequence is a bookkeeping tool introduced by for computing with long exact sequences of (co)homology groups.
+It was originally introduced in @leray_anneau_1946 @leray_structure_1946 for computing sheaf cohomology, with textbook accounts in @hatcher_spectral_2004 @mccleary_users_2001.
+Spectral sequences are made out of pages of 2 dimensional grids of (usually) abelian groups, with differentials between the groups.
+There are many different kinds of spectral sequences, characterized by their _second_ page, and an $infinity$-page, which is the information we want to compute.
+The $infinity$-page describes the "convergent" page of the spectral sequence, when pages no longer change due to all differentials becoming trivial.
+The statement of the spectral sequence usually looks like:
+
+$ E^(p,q)_2 = G => H $
+
+where $G$ is the definition of the $E_2$ page at coordinates $(p,q)$, and $H$ is the definition of the $E_infinity$ page at $(p,q)$. (This notation is for a cohomological spectral sequence. For a _homological_ spectral sequence, we write the scripts in the opposite order: $E^2_(p,q)$)
+
+Our approach in this paper is based on the approach used by @FvDFormalizationHigherInductive2018 @shulman_spectral_nodate.
 
 ...
 
 #definition[Cohomological spectral sequence][
-  A cohomological spectral sequence is a pair $(E, d)$.
+  A cohomological spectral sequence is a pair $(E, d)$, where
   
-  $E$ is a sequence of pages, indexed by $isTyp(r, NN)$, starting at 2.
-  Each page contains an infinite 2-dimensional grid of abelian groups, indexed by $isTyp((p, q), ZZ^2)$, denoted $E^(p, q)_r$.
-
-  $d$ are maps between the abelian groups in $E$.
-  For page $r$, $d_r$ maps from $E^(p,q)_r$ to $E^(p+r,q-r+1)_r$. These maps are differentials, meaning consecutive $d_r$ compose to $0$.
+  - $E$ is a sequence of pages, indexed by $isTyp(r, NN)$.
+    - Each page contains an infinite 2-dimensional grid of abelian groups, indexed by $isTyp((p, q), ZZ^2)$, denoted $E^(p, q)_r$
+  - For all $r$, $d_r$ is a family of maps between the abelian groups in $E_r$.
+    - For page $r$, $d_r$ maps from $E^(p,q)_r$ to $E^(p+r,q-r+1)_r$. These maps are differentials, meaning consecutive $d_r$ compose to $0$.
 ] <spectralSequence>
 
 #let stop_before(start, end, shorten, ..args) = {
@@ -93,16 +101,22 @@ There are many different kinds of spectral sequences,
   )
 }, kind: "image", supplement: [Figure], caption: [Pages $E_(1, 2)$ of a cohomological spectral sequence]) <spectralSequenceFigure>
 
-Although these pages are infinite, we typically operate solely in the first quadrant, such that all other groups are definitionally trivial.
+Although these pages stretch infinitely in all directions, we typically operate solely in the first quadrant, such that all other groups are definitionally trivial.
+This forces any particular point $(p,q)$ to eventually converge, as the differentials coming in and out of that page will eventually have one endpoint that falls outside of the first quadrant, making it trivial, which means $E^(p,q)$ for the next page will be $kerOf(0) / imOf(0)$, which is the same group as the previous page.
+
+Additionally, we make another simplifying assumptions to make the formalization easier, but at the cost of generality.
+To ensure that there are no extension problems when adding the components of any particular diagonal of the $E_infinity$ page, we assume that all the spectra we deal with are $k$-truncated.
+#TODO[why does this lead to no extension problems?]
 
 == Exact couples
 
-Exact couples, due to @massey_exact_1952, are a convenient way to "wrap" up the data of a spectral sequence such that its grading can be treated uniformly.
-They arise naturally from the classical construction of the Serre spectral sequence, as described in @hatcher_spectral_2004.
+Exact couples, due to @massey_exact_1952, are a convenient way to represent the data required to form a spectral sequence.
+It exploits the fact that the morphisms in long exact sequences follow a pattern, making it able to be represented uniformly as graded homomorphisms.
+To get from an exact couple to a spectral sequence, we can simply "forget" extra data from our exact couple.
+This extra data is needed because each page of the spectral sequence only gives us the next page's groups $E_r$, but not its differentials $d_r$.
 
-It is convenient to represent spectral sequence data this way because it provides extra information that we can use to determine the $d$s of future pages, that the spectral sequence structure doesn't carry by itself.
-To get from an exact couple to a spectral sequence, we can simply "forget" some components of our exact couple.
-Note that while all exact couples give rise to a spectral sequence, not all spectral sequences are necessarily derived from an exact couple.
+Another notable aspect of the exact couple approach is that it separates the algebraic machinery of iterating the spectral sequence from the homotopy theory, giving us a purely algebraic way of referring to this.
+While all exact couples give rise to a spectral sequence, not all spectral sequences are necessarily derived from an exact couple.
 In this section, we will describe how to iterate an exact couple, and how to use an exact couple to construct a spectral sequence.
 
 // TODO: Figure out where to put this sentence
@@ -173,11 +187,10 @@ In the classical construction of the Serre spectral sequence, this structure may
 ]
 
 Each highlighted staircase sequence shown in @lesStaircase is a long exact sequence of homology groups.
-The even columns have the cohomology 
 
 The insight here is that the groups in even columns have the same "shape" of $H_n (X_p)$ for some $n$ and $p$, while all the odd-columns have the same "shape" of $H_n (X_p, X_(p-1))$ for some $n$ and $p$.
 Graded groups give us exactly the tools necessary to deal with morphisms in this kind of diagram. 
-We can wrap the even and odd columns into a 2 different graded groups $D$ and $E$ that are each indexed by a pair $(n,p)$, and the morphisms between them are simply graded group homomorphisms with the degree shifts required by the staircase diagram above.
+We can wrap the even and odd columns into 2 different graded groups $D$ and $E$ that are each indexed by a pair $(n,p)$, and the morphisms between them are simply graded group homomorphisms with the degree shifts required by the staircase diagram above.
 
 Taking these $E$'s along with the connecting morphism $defEq(d, j compose k)$ gives us the first page of our spectral sequence.
 
@@ -221,9 +234,12 @@ Taking these $E$'s along with the connecting morphism $defEq(d, j compose k)$ gi
 }), caption: [First page of the spectral sequence])
 ]
 
-Typically, we are only interested in page 2 on of the spectral sequence. #TODO[finish]
+Reading from this diagram, we can understand that the degree shifts of the homomorphisms $i$, $j$, and $k$ in this initial page are:
 
-Note that although convenient, exact couples are not the _only_ source of spectral sequences; even the Serre spectral sequence can be constructed directly from a filtered object.
+$ deg(i) = () $
+
+Then, to get the next page of the spectral sequence, we obtain a _derived_ exact couple.
+This process of derivation computes our next approximation of our target cohomology result.
 
 #theorem[Derived couple][
   Given an exact couple $(D, E, i, j, k)$, we can get a _derived_ exact couple $(D', E', i', j', k')$ that contains exactly the homological data required for future pages of the spectral sequence.
@@ -233,15 +249,34 @@ Note that although convenient, exact couples are not the _only_ source of spectr
   In HoTT, we will also have the added burden of wrapping and unwrapping all of our data properly through truncations and quotients.
 
   First, we have $defEq(D', imOf(i))$.
+  #TODO[why?]
 
-  Before we define , define $defEq(d, j compose k)$. Notice that this goes around the triangle in a strange way, not following the arrows.
+  Define $defEq(d, j compose k)$. Notice that this goes around the triangle in a strange way, not following the arrows.
+  This forms the differential between the $E$ groups.
+
+  Define $defEq(E', kerOf(d) / imOf(d))$, the abelian groups that make up the next page of the spectral sequence.
+  
 ]
 
-== Convergence
-
+An exact couple can be said to be _bounded_.
+This condition requires, like spectra, that going infinitely in either direction either trivializes or stabilizes, allowing us to make broad statements about the ultimate convergence of the spectral sequence that it generates.
 
 
 == Atiyah-Hirzebruch Spectral Sequence
 
+The Atiyah-Hirzebruch spectral sequence, first published in @atiyah_vector_1961, computes generalized cohomology using ordinary cohomology.
+
+#definition[Atiyah-Hirzebruch spectral sequence][
+  Given some generalized cohomology $E$, and ordinary cohomology $H$,
+
+  $ E^(p,q)_2 = H^p (X; E^q (pt)) => E^(p+q) (X) $
+]
+
+
 
 == Serre Spectral Sequence
+
+#definition[Serre spectral sequence][
+  Given a 
+  $ E^(p,q)_2 = H^p () $
+]

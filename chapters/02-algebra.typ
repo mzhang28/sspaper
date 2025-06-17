@@ -237,7 +237,7 @@ By making graded functions _defined_ by the "endpoints" and propositionally prov
 ]
 
 Note that $d$ is a _type_ equivalence rather than a group equivalence.
-The group equivalence would require the underlying function to respect the group operation, which a degree shift such as $lambda x . x + d$ would not: $(x + y) + d eq.not (x + d) + (y + d)$.
+The group equivalence would require the underlying function to respect the group operation, which a degree shift such as $lambda x . x + d$ would not, since $(x + y) + d eq.not (x + d) + (y + d)$.
 But we only need this equivalence for relating indexes, so their group property is not desired.
 
 For example, using this definition makes composition simpler: $g compose f$ is a three-way composition of parts:

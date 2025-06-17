@@ -112,8 +112,14 @@ For example, the long exact sequence of #link(<homotopyGroup>)[homotopy groups] 
 
 == Spectra
 
-In stable homotopy theory, it is customary to work with spectra in place of spaces.
-This has some nice properties, including that the suspension functor $Sigma$ and the loop space functor $Omega$ are inverses of each other.
+The *Freudenthal Suspension Theorem*, first published in @freudenthal_uber_1937, revealed that spaces exhibit a "stabilization" at higher homotopy groups past a particular threshold.
+However, it's inconvenient to talk about these stable homotopy groups since they only occurred for high $k$, and we would have to carry the stabilization condition around.
+It would be much easier to _define_ an object around the stable groups.
+
+Thus, *spectra* were introduced to represent this "stable" information.
+The first account of spectra comes from @lima_duality_1958 and the first formalization into homotopy type theory is due to @FvDFormalizationHigherInductive2018.
+At a high level, a spectrum is a family of pointed spaces, related by structure maps, that extend in both directions infinitely.
+As a result of this stabilization, the loop space functor $Omega$ and the suspension functor $Sigma$ are automatically inverses of each other.
 
 #figure(diagram(spacing: 6mm,
   edge(".."),
@@ -131,14 +137,14 @@ This has some nice properties, including that the suspension functor $Sigma$ and
   
   along with structure maps between adjacent pairs of spaces:
 
-  $ arro(X_n, Omega X_(n+1)) $
+  $ isTyp(sigma, arro(Sigma X_n, X_(n+1))) $
 ]
 
 The indexing type is written here as $ZZ$, but in reality it can be any infinitely increasing structure.
 @FvDFormalizationHigherInductive2018 uses an abstract `succ_str` to represent the indexing type.
 
 #definition[$Omega$-spectrum][
-  An *$Omega$-spectrum* $X$ is a spectrum such that the structure maps are weak equivalences.
+  An *$Omega$-spectrum* $X$ is a spectrum such that the _adjoint_ of the structure maps are weak equivalences.
 
   $ X_n tilde.eq Omega X_(n+1) $
 ]
